@@ -38,4 +38,5 @@ from .models import UnprocessableEntity
 from .models import ValidationErrorModel
 from .models import XML
 from .openapi import OpenAPI
-from .view import APIView
+# from .view import APIView
+from .swagger_ui import get_swagger_ui_html
