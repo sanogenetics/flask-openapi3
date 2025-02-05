@@ -1,22 +1,26 @@
 # -*- coding: utf-8 -*-
 # @Author  : llc
 # @Time    : 2021/4/30 14:25
+import inspect
+import logging
 import os
 import re
 import sys
 from importlib import import_module
 from typing import Optional, List, Dict, Union, Any, Type, Callable
 
-from flask import Flask, Blueprint, render_template_string
+from flask import Blueprint, Flask, render_template_string
 from pydantic import BaseModel
+
+from flask_openapi3.models.parameter import Parameter
 
 if sys.version_info >= (3, 10):
     from importlib.metadata import entry_points
 else:  # pragma: no cover
     from importlib_metadata import entry_points  # type: ignore
 
-from .blueprint import APIBlueprint
-from .commands import openapi_command
+# from .blueprint import APIBlueprint
+# from .commands import openapi_command
 from .models import APISpec
 from .models import Components
 from .models import ExternalDocumentation
@@ -26,7 +30,8 @@ from .models import Schema
 from .models import Server
 from .models import Tag
 from .models import ValidationErrorModel
-from .scaffold import APIScaffold
+from .models import ParameterInType
+# from .scaffold import APIScaffold
 from .templates import openapi_html_string
 from .types import ParametersTuple
 from .types import ResponseDict
@@ -42,10 +47,13 @@ from .utils import make_validation_error_response
 from .utils import parse_and_store_tags
 from .utils import parse_method
 from .utils import parse_parameters
-from .view import APIView
+# from .view import APIView
+
+logger = logging.getLogger(__name__)
 
 
-class OpenAPI(APIScaffold, Flask):
+# class OpenAPI(APIScaffold, Flask):
+class OpenAPI:
     def __init__(
             self,
             import_name: str,
@@ -60,7 +68,7 @@ class OpenAPI(APIScaffold, Flask):
             validation_error_status: Union[str, int] = 422,
             validation_error_model: Type[BaseModel] = ValidationErrorModel,
             validation_error_callback: Callable = make_validation_error_response,
-            doc_ui: bool = True,
+            # doc_ui: bool = False,
             doc_prefix: str = "/openapi",
             doc_url: str = "/openapi.json",
             **kwargs: Any
@@ -97,7 +105,7 @@ class OpenAPI(APIScaffold, Flask):
                 Defaults to "/openapi.json".
             **kwargs: Additional kwargs to be passed to Flask.
         """
-        super(OpenAPI, self).__init__(import_name, **kwargs)
+        # super(OpenAPI, self).__init__(import_name, **kwargs)
 
         # Set OpenAPI version and API information
         self.openapi_version = "3.1.0"
@@ -138,11 +146,11 @@ class OpenAPI(APIScaffold, Flask):
         self.validation_error_callback = validation_error_callback
 
         # Initialize the OpenAPI documentation UI
-        if doc_ui:
-            self._init_doc()
+        # if doc_ui:
+        #     self._init_doc()
 
         # Add the OpenAPI command
-        self.cli.add_command(openapi_command)  # type: ignore
+        # self.cli.add_command(openapi_command)  # type: ignore
 
         # Initialize specification JSON
         self.spec_json: Dict = {}
@@ -224,7 +232,7 @@ class OpenAPI(APIScaffold, Flask):
 
         return self.spec_json
 
-    def generate_spec_json(self):
+    def generate_spec_json(self) -> None:
         self.spec.openapi = self.openapi_version
         self.spec.info = self.info
         self.spec.paths = self.paths
@@ -280,69 +288,69 @@ class OpenAPI(APIScaffold, Flask):
                     }
                 }
 
-    def register_api(self, api: APIBlueprint) -> None:
-        """
-        Register an APIBlueprint.
+    # def register_api(self, api: APIBlueprint) -> None:
+    #     """
+    #     Register an APIBlueprint.
 
-        Args:
-            api: The APIBlueprint instance to register.
+    #     Args:
+    #         api: The APIBlueprint instance to register.
 
-        """
-        for tag in api.tags:
-            if tag.name not in self.tag_names:
-                # Append tag to the list of tags
-                self.tags.append(tag)
+    #     """
+    #     for tag in api.tags:
+    #         if tag.name not in self.tag_names:
+    #             # Append tag to the list of tags
+    #             self.tags.append(tag)
 
-                # Append tag name to the list of tag names
-                self.tag_names.append(tag.name)
+    #             # Append tag name to the list of tag names
+    #             self.tag_names.append(tag.name)
 
-        # Update paths with the APIBlueprint's paths
-        self.paths.update(**api.paths)
+    #     # Update paths with the APIBlueprint's paths
+    #     self.paths.update(**api.paths)
 
-        # Update component schemas with the APIBlueprint's component schemas
-        self.components_schemas.update(**api.components_schemas)
+    #     # Update component schemas with the APIBlueprint's component schemas
+    #     self.components_schemas.update(**api.components_schemas)
 
-        # Register the APIBlueprint with the current instance
-        self.register_blueprint(api)
+    #     # Register the APIBlueprint with the current instance
+    #     self.register_blueprint(api)
 
-    def register_api_view(self, api_view: APIView, view_kwargs: Optional[Dict[Any, Any]] = None) -> None:
-        """
-        Register APIView
+    # def register_api_view(self, api_view: APIView, view_kwargs: Optional[Dict[Any, Any]] = None) -> None:
+    #     """
+    #     Register APIView
 
-        Args:
-            api_view: The APIView instance to register.
-            view_kwargs: Additional keyword arguments to pass to the API views.
-        """
-        if view_kwargs is None:
-            view_kwargs = {}
+    #     Args:
+    #         api_view: The APIView instance to register.
+    #         view_kwargs: Additional keyword arguments to pass to the API views.
+    #     """
+    #     if view_kwargs is None:
+    #         view_kwargs = {}
 
-        # Iterate through tags of the APIView
-        for tag in api_view.tags:
-            if tag.name not in self.tag_names:
-                # Append tag to the list of tags
-                self.tags.append(tag)
+    #     # Iterate through tags of the APIView
+    #     for tag in api_view.tags:
+    #         if tag.name not in self.tag_names:
+    #             # Append tag to the list of tags
+    #             self.tags.append(tag)
 
-                # Append tag name to the list of tag names
-                self.tag_names.append(tag.name)
+    #             # Append tag name to the list of tag names
+    #             self.tag_names.append(tag.name)
 
-        # Update paths with the APIView's paths
-        self.paths.update(**api_view.paths)
+    #     # Update paths with the APIView's paths
+    #     self.paths.update(**api_view.paths)
 
-        # Update component schemas with the APIView's component schemas
-        self.components_schemas.update(**api_view.components_schemas)
+    #     # Update component schemas with the APIView's component schemas
+    #     self.components_schemas.update(**api_view.components_schemas)
 
-        # Register the APIView with the current instance
-        api_view.register(self, view_kwargs=view_kwargs)
+    #     # Register the APIView with the current instance
+    #     api_view.register(self, view_kwargs=view_kwargs)
 
-    def _add_url_rule(
-            self,
-            rule,
-            endpoint=None,
-            view_func=None,
-            provide_automatic_options=None,
-            **options,
-    ) -> None:
-        self.add_url_rule(rule, endpoint, view_func, provide_automatic_options, **options)
+    # def _add_url_rule(
+    #         self,
+    #         rule,
+    #         endpoint=None,
+    #         view_func=None,
+    #         provide_automatic_options=None,
+    #         **options,
+    # ) -> None:
+    #     self.add_url_rule(rule, endpoint, view_func, provide_automatic_options, **options)
 
     def _collect_openapi_info(
             self,
@@ -359,9 +367,9 @@ class OpenAPI(APIScaffold, Flask):
             security: Optional[List[Dict[str, List[Any]]]] = None,
             servers: Optional[List[Server]] = None,
             openapi_extensions: Optional[Dict[str, Any]] = None,
-            doc_ui: bool = True,
+            path_params: List[Parameter],
             method: str = HTTPMethod.GET
-    ) -> ParametersTuple:
+    ) -> None:
         """
         Collects OpenAPI specification information for Flask routes and view functions.
 
@@ -381,54 +389,106 @@ class OpenAPI(APIScaffold, Flask):
             doc_ui: Declares this operation to be shown. Default to True.
             method: HTTP method for the operation. Defaults to GET.
         """
-        if doc_ui is True:
-            # Convert key to string
-            new_responses = convert_responses_key_to_string(responses or {})
+        if path_params is None:
+            path_params = []
 
-            # Global response: combine API responses
-            combine_responses = {**self.responses, **new_responses}
+        # Convert key to string
+        new_responses = convert_responses_key_to_string(responses or {})
 
-            # Create operation
-            operation = get_operation(
-                func,
-                summary=summary,
-                description=description,
-                openapi_extensions=openapi_extensions
-            )
-            # Set external docs
-            if external_docs:
-                operation.externalDocs = external_docs
+        # Global response: combine API responses
+        combine_responses = {**self.responses, **new_responses}
 
-            # Unique string used to identify the operation.
-            operation.operationId = operation_id or self.operation_id_callback(
-                name=func.__name__, path=rule, method=method
-            )
+        # Create operation
+        operation = get_operation(
+            func,
+            summary=summary,
+            description=description,
+            openapi_extensions=openapi_extensions
+        )
+        # Set external docs
+        if external_docs:
+            operation.externalDocs = external_docs
 
-            # Only set `deprecated` if True, otherwise leave it as None
-            if deprecated is not None:
-                operation.deprecated = deprecated
+        # Unique string used to identify the operation.
+        operation.operationId = operation_id or self.operation_id_callback(
+            name=func.__name__, path=rule, method=method
+        )
 
-            # Add security
-            if security:
-                operation.security = security
+        # Only set `deprecated` if True, otherwise leave it as None
+        if deprecated is not None:
+            operation.deprecated = deprecated
 
-            # Add servers
-            if servers:
-                operation.servers = servers
+        # Add security
+        if security:
+            operation.security = security
 
-            # Store tags
-            parse_and_store_tags(tags or [], self.tags, self.tag_names, operation)
+        # Add servers
+        if servers:
+            operation.servers = servers
 
-            # Parse response
-            get_responses(combine_responses, self.components_schemas, operation)
+        # Store tags
+        parse_and_store_tags(tags or [], self.tags, self.tag_names, operation)
 
-            # Convert a route parameter format from /pet/<petId> to /pet/{petId}
-            uri = re.sub(r"<([^<:]+:)?", "{", rule).replace(">", "}")
+        # Parse response
+        get_responses(combine_responses, self.components_schemas, operation)
 
-            # Parse method
-            parse_method(uri, method, self.paths, operation)
+        # Convert a route parameter format from /pet/<petId> to /pet/{petId}
+        uri = re.sub(r"<([^<:]+:)?", "{", rule).replace(">", "}")
 
-            # Parse parameters
-            return parse_parameters(func, components_schemas=self.components_schemas, operation=operation)
-        else:
-            return parse_parameters(func, doc_ui=False)
+        # Parse method
+        parse_method(uri, method, self.paths, operation)
+
+        # Parse parameters
+        parse_parameters(func, components_schemas=self.components_schemas, operation=operation, path_params=path_params)
+
+
+
+    def collect_metadata(self, app: Flask) -> None:
+        for rule in app.url_map.iter_rules():
+            try:
+                view_func = app.view_functions[rule.endpoint]
+
+                # parse method
+                _methods = [method for method in rule.methods if method not in {"HEAD", "OPTIONS"}]
+                if len(_methods) > 1:
+                    # TODO: Handle multiple methods
+                    print(f"Multiple methods for {rule}: {_methods}")
+                method = _methods[0]
+
+                # parse response
+                sig = inspect.signature(view_func)
+                return_annotation = sig.return_annotation
+                response = None
+                if return_annotation is not inspect._empty:
+                    response = {200: return_annotation}
+
+                # parse path parameters
+                path_params = []
+                for arg in rule.arguments:
+                    _param = {"name": arg, "in": ParameterInType.PATH, "schema": {"type": "string"}}
+                    path_params.append(Parameter(**_param, required=True))
+
+                # tags
+                _tags = self._get_tags_for_endpoint(rule.endpoint)
+                tags = [Tag(name=tag) for tag in _tags]
+
+                self._collect_openapi_info(
+                    rule.rule,
+                    view_func,
+                    responses=response,
+                    operation_id=rule.endpoint,
+                    method=method,
+                    tags=tags,
+                    path_params=path_params,
+                )
+
+            except Exception as e:
+                logger.error(f"Error adding {rule} to spec: {e}")
+                continue
+
+    def _get_tags_for_endpoint(self, endpoint: str) -> List[str]:
+        """
+        Returns tags for the endpoint based on the module it is defined in.
+        """
+        module = endpoint.split(".")[0]
+        return [module]

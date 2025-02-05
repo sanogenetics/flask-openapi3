@@ -413,7 +413,8 @@ def parse_parameters(
         *,
         components_schemas: Optional[Dict] = None,
         operation: Optional[Operation] = None,
-        doc_ui: bool = True,
+        # doc_ui: bool = True,
+        path_params: List[Parameter],
 ) -> ParametersTuple:
     """
     Parses the parameters of a given function and returns the types for header, cookie, path,
@@ -452,8 +453,8 @@ def parse_parameters(
     raw: Optional[Type[RawModel]] = annotations.get("raw")
 
     # If doc_ui is False, return the types without further processing
-    if doc_ui is False:
-        return header, cookie, path, query, form, body, raw
+    # if doc_ui is False:
+    #     return header, cookie, path, query, form, body, raw
 
     parameters = []
 
@@ -528,6 +529,7 @@ def parse_parameters(
         request_body = RequestBody(content=_content)
         operation.requestBody = request_body
 
+    parameters.extend(path_params)
     if parameters:
         # Set the parsed parameters in the operation object
         operation.parameters = parameters

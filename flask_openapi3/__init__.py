@@ -3,7 +3,7 @@
 # @Time    : 2021/4/30 10:14
 
 from .__version__ import __version__
-from .blueprint import APIBlueprint
+# from .blueprint import APIBlueprint
 from .models import APISpec
 from .models import Components
 from .models import Contact
