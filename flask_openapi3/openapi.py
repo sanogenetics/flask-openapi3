@@ -460,7 +460,9 @@ class OpenAPI:
                 return_annotation = sig.return_annotation
                 response = None
                 if return_annotation is not inspect._empty:
-                    response = {200: return_annotation}
+                    decorated_status_code = getattr(view_func, "_flask_validate_args", {}).get("on_success_status")
+                    status_code = int(decorated_status_code) if decorated_status_code else 200
+                    response = {status_code: return_annotation}
 
                 # parse path parameters
                 path_params = []
