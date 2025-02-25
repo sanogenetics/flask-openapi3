@@ -332,6 +332,8 @@ def get_responses(
         if response is None:
             # If the response is None, it means HTTP status code "204" (No Content)
             _responses[key] = Response(description=HTTP_STATUS.get(key, ""))
+        elif inspect.isclass(response) and issubclass(response, FlaskResponse):
+                _responses[key] = Response(description=HTTP_STATUS.get(key, ""))
         elif isinstance(response, dict):
             response["description"] = response.get("description", HTTP_STATUS.get(key, ""))
             _responses[key] = Response(**response)
