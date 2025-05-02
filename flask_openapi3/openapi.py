@@ -33,7 +33,6 @@ from .models import ValidationErrorModel
 from .models import ParameterInType
 # from .scaffold import APIScaffold
 from .templates import openapi_html_string
-from .types import ParametersTuple
 from .types import ResponseDict
 from .types import SecuritySchemesDict
 from .utils import HTTPMethod
