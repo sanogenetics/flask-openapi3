@@ -618,4 +618,4 @@ def convert_responses_key_to_string(responses: ResponseDict) -> ResponseStrKeyDi
 
 
 def normalize_name(name: str) -> str:
-    return re.sub(r"[^\w.\-]", "_", name)
+    return re.sub(r"[^\w.\-]", "_", name).rstrip("_")
