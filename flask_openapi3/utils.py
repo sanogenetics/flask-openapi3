@@ -320,6 +320,30 @@ def parse_body(
     return content, components_schemas
 
 
+def resolve_schema_name_conflict(components_schemas: dict, base_name: str, schema_obj: Schema):
+    """
+    Returns a unique schema name for a given schema_obj, avoiding conflicts in components_schemas.
+    If an identical schema already exists, returns its name. Otherwise, returns a new unique name.
+    """
+    normalized_name = base_name
+    existing_schema = components_schemas.get(normalized_name)
+
+    if existing_schema is None or existing_schema == schema_obj:
+        return normalized_name  # Either new or matches the already present schema
+
+    # If there's a conflict, append a number to the base name
+    count = 1
+    new_normalized_name = f"{base_name}_{count}"
+    while True:
+        _existing_schema = components_schemas.get(new_normalized_name)
+        if _existing_schema is None:
+            return new_normalized_name
+        if _existing_schema == schema_obj:
+            return new_normalized_name  # Already present under this name
+        count += 1
+        new_normalized_name = f"{base_name}_{count}"
+
+
 def get_responses(
         responses: ResponseStrKeyDict,
         components_schemas: dict,
@@ -333,7 +357,7 @@ def get_responses(
             # If the response is None, it means HTTP status code "204" (No Content)
             _responses[key] = Response(description=HTTP_STATUS.get(key, ""))
         elif inspect.isclass(response) and issubclass(response, FlaskResponse):
-                _responses[key] = Response(description=HTTP_STATUS.get(key, ""))
+            _responses[key] = Response(description=HTTP_STATUS.get(key, ""))
         elif isinstance(response, dict):
             response["description"] = response.get("description", HTTP_STATUS.get(key, ""))
             _responses[key] = Response(**response)
@@ -341,12 +365,17 @@ def get_responses(
             # OpenAPI 3 support ^[a-zA-Z0-9\.\-_]+$ so we should normalize __name__
             schema = get_model_schema(response, mode="serialization")
             original_title = schema.get("title") or response.__name__
-            name = normalize_name(original_title)
+            normalized_name = normalize_name(original_title)
+
+            definition_schema = Schema(**schema)
+            normalized_name = resolve_schema_name_conflict(components_schemas, normalized_name, definition_schema)
+            
+            _schemas[normalized_name] = Schema(**schema)
             _responses[key] = Response(
                 description=HTTP_STATUS.get(key, ""),
                 content={
                     "application/json": MediaType(
-                        schema=Schema(**{"$ref": f"{OPENAPI3_REF_PREFIX}/{name}"})
+                        schema=Schema(**{"$ref": f"{OPENAPI3_REF_PREFIX}/{normalized_name}"})
                     )})
 
             model_config: DefaultDict[str, Any] = response.model_config  # type: ignore
@@ -369,12 +398,16 @@ def get_responses(
                     _content["application/json"].encoding = openapi_extra.get("encoding")  # type: ignore
                 _content.update(openapi_extra.get("content", {}))  # type: ignore
 
-            _schemas[name] = Schema(**schema)
             definitions = schema.get("$defs")
             if definitions:
-                # Add schema definitions to _schemas
-                for name, value in definitions.items():
-                    _schemas[normalize_name(name)] = Schema(**value)
+                for definition_name, value in definitions.items():
+                    definition_schema = Schema(**value)
+                    name_to_use = resolve_schema_name_conflict(
+                        components_schemas, definition_name, definition_schema
+                    )
+                    # Only add if not already present with identical schema
+                    if name_to_use not in _schemas:
+                        _schemas[name_to_use] = definition_schema
 
     components_schemas.update(**_schemas)
     operation.responses = _responses
